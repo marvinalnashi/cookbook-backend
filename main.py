@@ -101,6 +101,27 @@ def get_recipes():
     return response
 
 
+@app.post("/recipes/add")
+def add_recipe(recipe: Recipe):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("INSERT INTO recipes (title, description, occasion) VALUES (?, ?, ?)",
+                   (recipe.title, recipe.description, recipe.occasion))
+    recipe_id = cursor.lastrowid
+
+    for ingredient in recipe.ingredients:
+        cursor.execute("INSERT INTO recipe_ingredients (recipe_id, ingredient) VALUES (?, ?)", (recipe_id, ingredient))
+
+    for i, step in enumerate(recipe.steps):
+        cursor.execute("INSERT INTO recipe_steps (recipe_id, step_number, instruction) VALUES (?, ?, ?)", (recipe_id, i+1, step))
+
+    conn.commit()
+    conn.close()
+
+    return {"message": "Recipe added successfully"}
+
+
 @app.post("/recipes/filter")
 def filter_recipes(occasion: str, include: List[str] = [], exclude: List[str] = []):
     conn = get_db_connection()
