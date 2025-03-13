@@ -1,0 +1,28 @@
+# Ignore Python virtual environments
+venv/
+env/
+
+# Ignore compiled Python files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore logs and database files
+logs/
+*.log
+*.sqlite3
+*.db
+
+# Ignore IDE settings (VS Code, PyCharm)
+.vscode/
+.idea/
+.mypy_cache/
+
+# Ignore environment variables
+.env
+.config/
+
+# Ignore system files
+.DS_Store
+Thumbs.db
