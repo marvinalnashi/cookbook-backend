@@ -6,9 +6,16 @@ import sqlite3
 
 app = FastAPI()
 
+origins = [
+    "http://localhost:3000",
+    "http://192.168.186.240:3001",
+    "https://your-vercel-frontend-url.vercel.app",
+    "https://little-chefs-cookbook-production.up.railway.app"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -24,7 +31,6 @@ def get_db_connection():
 @app.get("/ping")
 def ping():
     return {"message": "pong"}
-
 
 class Recipe(BaseModel):
     id: Optional[int]
