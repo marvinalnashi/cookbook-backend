@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
@@ -8,7 +8,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000", "http://192.168.186.240:3001", "*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -20,7 +20,8 @@ def get_db_connection():
     return conn
 
 @app.get("/ping")
-def ping():
+def ping(response: Response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
     return {"message": "pong"}
 
 class Recipe(BaseModel):
