@@ -14,6 +14,7 @@ logging.basicConfig(level=logging.INFO)
 async def lifespan(app: FastAPI):
     logging.info("Starting application...")
     setup_database()
+    insert_sample_recipes()
     yield
     logging.info("Shutting down application...")
 
@@ -72,137 +73,15 @@ def setup_database():
     logging.info("Database setup complete.")
 
 
-@app.get("/ping")
-def ping():
-    return {"message": "pong"}
-
-
-class Recipe(BaseModel):
-    id: Optional[int] = None
-    title: str
-    description: str
-    occasion: str
-    ingredients: List[str]
-    steps: List[str]
-
-
-@app.get("/recipes/")
-def get_recipes(
-        occasion: Optional[str] = None,
-        included_ingredients: Optional[List[str]] = Query(None),
-        excluded_ingredients: Optional[List[str]] = Query(None),
-):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    query = """
-        SELECT DISTINCT recipes.id, recipes.title, recipes.description 
-        FROM recipes 
-        JOIN recipe_ingredients ON recipes.id = recipe_ingredients.recipe_id
-    """
-    params = []
-
-    if occasion:
-        query += " WHERE recipes.occasion = ?"
-        params.append(occasion)
-
-    if included_ingredients:
-        if not params:
-            query += " WHERE "
-        else:
-            query += " AND "
-        query += " (" + " OR ".join(["recipe_ingredients.ingredient = ?"] * len(included_ingredients)) + ")"
-        params.extend(included_ingredients)
-
-    if excluded_ingredients:
-        query += " AND NOT EXISTS (SELECT 1 FROM recipe_ingredients ri WHERE ri.recipe_id = recipes.id AND (" + " OR ".join(
-            ["ri.ingredient = ?"] * len(excluded_ingredients)) + "))"
-        params.extend(excluded_ingredients)
-
-    cursor.execute(query, params)
-    recipes = cursor.fetchall()
-
-    response = []
-    for recipe in recipes:
-        cursor.execute("SELECT ingredient FROM recipe_ingredients WHERE recipe_id=?", (recipe["id"],))
-        ingredients = [row["ingredient"] for row in cursor.fetchall()]
-
-        cursor.execute("SELECT instruction FROM recipe_steps WHERE recipe_id=? ORDER BY step_number", (recipe["id"],))
-        steps = [row["instruction"] for row in cursor.fetchall()]
-
-        response.append({
-            "id": recipe["id"],
-            "title": recipe["title"],
-            "description": recipe["description"],
-            "occasion": recipe["occasion"],
-            "ingredients": ingredients,
-            "steps": steps
-        })
-
-    conn.close()
-    return response
-
-
-@app.post("/recipes/add")
-def add_recipe(recipe: Recipe):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("INSERT INTO recipes (title, description, occasion) VALUES (?, ?, ?)",
-                   (recipe.title, recipe.description, recipe.occasion))
-    recipe_id = cursor.lastrowid
-
-    for ingredient in recipe.ingredients:
-        cursor.execute("INSERT INTO recipe_ingredients (recipe_id, ingredient) VALUES (?, ?)", (recipe_id, ingredient))
-
-    for i, step in enumerate(recipe.steps):
-        cursor.execute("INSERT INTO recipe_steps (recipe_id, step_number, instruction) VALUES (?, ?, ?)",
-                       (recipe_id, i + 1, step))
-
-    conn.commit()
-    conn.close()
-
-    return {"message": "Recipe added successfully"}
-
-
-@app.post("/recipes/filter")
-def filter_recipes(occasion: str, include: List[str] = [], exclude: List[str] = []):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    query = """
-        SELECT DISTINCT recipes.id, recipes.title, recipes.description 
-        FROM recipes 
-        JOIN recipe_ingredients ON recipes.id = recipe_ingredients.recipe_id 
-        WHERE recipes.occasion = ?
-    """
-    params = [occasion]
-
-    if include:
-        include_query = " AND (" + " OR ".join(["recipe_ingredients.ingredient = ?"] * len(include)) + ")"
-        query += include_query
-        params.extend(include)
-
-    if exclude:
-        exclude_query = " AND NOT EXISTS (SELECT 1 FROM recipe_ingredients WHERE recipe_ingredients.recipe_id = recipes.id AND (" + " OR ".join(
-            ["recipe_ingredients.ingredient = ?"] * len(exclude)) + "))"
-        query += exclude_query
-        params.extend(exclude)
-
-    cursor.execute(query, params)
-    recipes = cursor.fetchall()
-
-    conn.close()
-    return [{"id": row["id"], "title": row["title"], "description": row["description"]} for row in recipes]
-
-
 def insert_sample_recipes():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("DELETE FROM recipes")
-    cursor.execute("DELETE FROM recipe_ingredients")
-    cursor.execute("DELETE FROM recipe_steps")
+    cursor.execute("SELECT COUNT(*) FROM recipes")
+    if cursor.fetchone()[0] > 0:
+        logging.info("Sample recipes already exist. Skipping insertion.")
+        conn.close()
+        return
 
     sample_recipes = [
         {
@@ -243,9 +122,13 @@ def insert_sample_recipes():
 
     conn.commit()
     conn.close()
+    logging.info("Sample recipes inserted successfully.")
 
 
-insert_sample_recipes()
+@app.get("/ping")
+def ping():
+    return {"message": "pong"}
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
