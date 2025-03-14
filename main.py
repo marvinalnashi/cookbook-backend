@@ -5,6 +5,7 @@ from typing import List, Optional
 import sqlite3
 import logging
 from contextlib import asynccontextmanager
+import uvicorn
 
 logging.basicConfig(level=logging.INFO)
 
@@ -19,7 +20,7 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for debugging (change for production)
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -74,7 +75,7 @@ class Recipe(BaseModel):
     id: Optional[int]
     title: str
     description: str
-    occasion: str  # Breakfast, Lunch, Dinner, Dessert
+    occasion: str
     ingredients: List[str]
     steps: List[str]
 
@@ -155,3 +156,6 @@ def filter_recipes(occasion: str, include: List[str] = [], exclude: List[str] = 
 
     conn.close()
     return [{"id": row["id"], "title": row["title"], "description": row["description"]} for row in recipes]
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
