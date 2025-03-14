@@ -1,14 +1,25 @@
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 import sqlite3
+import logging
+from contextlib import asynccontextmanager
 
-app = FastAPI()
+logging.basicConfig(level=logging.INFO)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logging.info("Starting application...")
+    setup_database()
+    yield
+    logging.info("Shutting down application...")
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://192.168.186.240:3001", "*"],
+    allow_origins=["*"],  # Allow all origins for debugging (change for production)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -19,22 +30,7 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-@app.get("/ping")
-def ping(response: Response):
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    return {"message": "pong"}
-
-class Recipe(BaseModel):
-    id: Optional[int]
-    title: str
-    description: str
-    occasion: str  # Breakfast, Lunch, Dinner, Dessert
-    ingredients: List[str]
-    steps: List[str]
-
-
-@app.on_event("startup")
-def startup():
+def setup_database():
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -68,7 +64,19 @@ def startup():
 
     conn.commit()
     conn.close()
+    logging.info("Database setup complete.")
 
+@app.get("/ping")
+def ping():
+    return {"message": "pong"}
+
+class Recipe(BaseModel):
+    id: Optional[int]
+    title: str
+    description: str
+    occasion: str  # Breakfast, Lunch, Dinner, Dessert
+    ingredients: List[str]
+    steps: List[str]
 
 @app.get("/recipes/")
 def get_recipes():
@@ -98,7 +106,6 @@ def get_recipes():
     conn.close()
     return response
 
-
 @app.post("/recipes/add")
 def add_recipe(recipe: Recipe):
     conn = get_db_connection()
@@ -119,13 +126,17 @@ def add_recipe(recipe: Recipe):
 
     return {"message": "Recipe added successfully"}
 
-
 @app.post("/recipes/filter")
 def filter_recipes(occasion: str, include: List[str] = [], exclude: List[str] = []):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    query = "SELECT DISTINCT recipes.id, recipes.title, recipes.description FROM recipes JOIN recipe_ingredients ON recipes.id = recipe_ingredients.recipe_id WHERE recipes.occasion = ?"
+    query = """
+        SELECT DISTINCT recipes.id, recipes.title, recipes.description 
+        FROM recipes 
+        JOIN recipe_ingredients ON recipes.id = recipe_ingredients.recipe_id 
+        WHERE recipes.occasion = ?
+    """
     params = [occasion]
 
     if include:
