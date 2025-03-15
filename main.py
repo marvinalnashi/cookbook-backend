@@ -154,9 +154,15 @@ def get_recipes():
     return response
 
 
+class RecipeFilterRequest(BaseModel):
+    occasion: str
+    include: List[str] = []
+    exclude: List[str] = []
+
+
 @app.post("/recipes/filter")
-def filter_recipes(occasion: str, include: List[str] = [], exclude: List[str] = []):
-    conn = get_db_connection()
+def filter_recipes(request: RecipeFilterRequest):
+    conn = sqlite3.connect("cookbook.db")
     cursor = conn.cursor()
 
     query = """
@@ -165,27 +171,27 @@ def filter_recipes(occasion: str, include: List[str] = [], exclude: List[str] = 
         JOIN recipe_ingredients ON recipes.id = recipe_ingredients.recipe_id 
         WHERE recipes.occasion = ?
     """
-    params = [occasion]
+    params = [request.occasion]
 
-    if include:
-        include_query = " AND (" + " OR ".join(["recipe_ingredients.ingredient = ?"] * len(include)) + ")"
+    if request.include:
+        include_query = " AND (" + " OR ".join(["recipe_ingredients.ingredient = ?"] * len(request.include)) + ")"
         query += include_query
-        params.extend(include)
+        params.extend(request.include)
 
-    if exclude:
+    if request.exclude:
         exclude_query = """
             AND recipes.id NOT IN (
                 SELECT recipe_id FROM recipe_ingredients WHERE ingredient IN ({})
             )
-        """.format(",".join(["?"] * len(exclude)))
+        """.format(",".join(["?"] * len(request.exclude)))
         query += exclude_query
-        params.extend(exclude)
+        params.extend(request.exclude)
 
     cursor.execute(query, params)
     recipes = cursor.fetchall()
-
     conn.close()
-    return [{"id": row["id"], "title": row["title"], "description": row["description"]} for row in recipes]
+
+    return [{"id": row[0], "title": row[1], "description": row[2]} for row in recipes]
 
 
 if __name__ == "__main__":
