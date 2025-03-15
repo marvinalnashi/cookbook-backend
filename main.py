@@ -445,6 +445,34 @@ def get_recipes():
     return response
 
 
+@app.get("/recipes/{recipe_id}")
+def get_recipe(recipe_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM recipes WHERE id=?", (recipe_id,))
+    recipe = cursor.fetchone()
+
+    if recipe is None:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    cursor.execute("SELECT ingredient FROM recipe_ingredients WHERE recipe_id=?", (recipe["id"],))
+    ingredients = [row["ingredient"] for row in cursor.fetchall()]
+
+    cursor.execute("SELECT instruction FROM recipe_steps WHERE recipe_id=? ORDER BY step_number", (recipe["id"],))
+    steps = [row["instruction"] for row in cursor.fetchall()]
+
+    conn.close()
+    return {
+        "id": recipe["id"],
+        "title": recipe["title"],
+        "description": recipe["description"],
+        "occasion": recipe["occasion"],
+        "ingredients": ingredients,
+        "steps": steps
+    }
+
+
 class RecipeFilterRequest(BaseModel):
     occasion: str
     include: List[str] = []
@@ -453,7 +481,7 @@ class RecipeFilterRequest(BaseModel):
 
 @app.post("/recipes/filter")
 def filter_recipes(request: RecipeFilterRequest):
-    conn = sqlite3.connect("cookbook.db")
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     query = """
@@ -472,8 +500,7 @@ def filter_recipes(request: RecipeFilterRequest):
     if request.exclude:
         exclude_query = """
             AND recipes.id NOT IN (
-                SELECT recipe_id FROM recipe_ingredients WHERE ingredient IN ({})
-            )
+                SELECT recipe_id FROM recipe_ingredients WHERE ingredient IN ({}))
         """.format(",".join(["?"] * len(request.exclude)))
         query += exclude_query
         params.extend(request.exclude)
