@@ -21,12 +21,17 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+origins = [
+    "https://cookbook-frontend-seven.vercel.app",
+    "https://little-chefs-cookbook-production.up.railway.app",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://cookbook-frontend-seven.vercel.app"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["Content-Type"],
+    allow_headers=["*"],
 )
 
 
