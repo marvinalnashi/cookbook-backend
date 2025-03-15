@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
@@ -74,60 +74,84 @@ def setup_database():
 
 
 def insert_sample_recipes():
+    """Insert sample recipes into the database if none exist."""
     conn = get_db_connection()
     cursor = conn.cursor()
 
     cursor.execute("SELECT COUNT(*) FROM recipes")
-    if cursor.fetchone()[0] > 0:
-        logging.info("Sample recipes already exist. Skipping insertion.")
-        conn.close()
-        return
+    count = cursor.fetchone()[0]
 
-    sample_recipes = [
-        {
-            "title": "Tomato Soup",
-            "description": "A warm and comforting tomato soup.",
-            "occasion": "Lunch",
-            "ingredients": ["Tomato", "Salt", "Garlic"],
-            "steps": ["Chop tomatoes", "Boil with spices", "Blend until smooth"]
-        },
-        {
-            "title": "Grilled Cheese Sandwich",
-            "description": "A crispy sandwich with melted cheese.",
-            "occasion": "Breakfast",
-            "ingredients": ["Cheese", "Bread", "Butter"],
-            "steps": ["Butter bread", "Add cheese", "Grill until golden"]
-        },
-        {
-            "title": "Beef Stew",
-            "description": "A hearty and flavorful beef stew.",
-            "occasion": "Dinner",
-            "ingredients": ["Beef", "Potato", "Carrot", "Garlic"],
-            "steps": ["Brown beef", "Add vegetables", "Simmer until tender"]
-        },
-    ]
+    if count == 0:
+        logging.info("Inserting sample recipes...")
 
-    for recipe in sample_recipes:
-        cursor.execute("INSERT INTO recipes (title, description, occasion) VALUES (?, ?, ?)",
-                       (recipe["title"], recipe["description"], recipe["occasion"]))
-        recipe_id = cursor.lastrowid
+        sample_recipes = [
+            {
+                "title": "Pancakes",
+                "description": "Fluffy breakfast pancakes.",
+                "occasion": "Breakfast",
+                "ingredients": ["Milk", "Butter", "Eggs"],
+                "steps": ["Mix ingredients", "Cook on pan", "Serve"]
+            },
+            {
+                "title": "Grilled Steak",
+                "description": "Juicy grilled steak with seasoning.",
+                "occasion": "Dinner",
+                "ingredients": ["Beef", "Salt", "Pepper"],
+                "steps": ["Season steak", "Grill for 5 mins per side", "Serve"]
+            }
+        ]
 
-        for ingredient in recipe["ingredients"]:
-            cursor.execute("INSERT INTO recipe_ingredients (recipe_id, ingredient) VALUES (?, ?)",
-                           (recipe_id, ingredient))
+        for recipe in sample_recipes:
+            cursor.execute("INSERT INTO recipes (title, description, occasion) VALUES (?, ?, ?)",
+                           (recipe["title"], recipe["description"], recipe["occasion"]))
+            recipe_id = cursor.lastrowid
 
-        for i, step in enumerate(recipe["steps"]):
-            cursor.execute("INSERT INTO recipe_steps (recipe_id, step_number, instruction) VALUES (?, ?, ?)",
-                           (recipe_id, i + 1, step))
+            for ingredient in recipe["ingredients"]:
+                cursor.execute("INSERT INTO recipe_ingredients (recipe_id, ingredient) VALUES (?, ?)",
+                               (recipe_id, ingredient))
 
-    conn.commit()
+            for i, step in enumerate(recipe["steps"]):
+                cursor.execute("INSERT INTO recipe_steps (recipe_id, step_number, instruction) VALUES (?, ?, ?)",
+                               (recipe_id, i + 1, step))
+
+        conn.commit()
+        logging.info("Sample recipes inserted.")
+
     conn.close()
-    logging.info("Sample recipes inserted successfully.")
 
 
 @app.get("/ping")
 def ping():
     return {"message": "pong"}
+
+
+@app.get("/recipes/")
+def get_recipes():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM recipes")
+    recipes = cursor.fetchall()
+
+    response = []
+    for recipe in recipes:
+        cursor.execute("SELECT ingredient FROM recipe_ingredients WHERE recipe_id=?", (recipe["id"],))
+        ingredients = [row["ingredient"] for row in cursor.fetchall()]
+
+        cursor.execute("SELECT instruction FROM recipe_steps WHERE recipe_id=? ORDER BY step_number", (recipe["id"],))
+        steps = [row["instruction"] for row in cursor.fetchall()]
+
+        response.append({
+            "id": recipe["id"],
+            "title": recipe["title"],
+            "description": recipe["description"],
+            "occasion": recipe["occasion"],
+            "ingredients": ingredients,
+            "steps": steps
+        })
+
+    conn.close()
+    return response
 
 
 if __name__ == "__main__":
