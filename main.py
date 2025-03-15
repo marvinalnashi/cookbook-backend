@@ -19,7 +19,11 @@ async def lifespan(app: FastAPI):
     logging.info("Shutting down application...")
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -416,7 +420,7 @@ def ping():
     return {"message": "pong"}
 
 
-@app.get("/recipes/")
+@app.get("/recipes", include_in_schema=False)
 def get_recipes():
     conn = get_db_connection()
     cursor = conn.cursor()
