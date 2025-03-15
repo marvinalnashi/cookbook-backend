@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from typing import List, Optional
 import sqlite3
@@ -23,7 +24,7 @@ app = FastAPI(lifespan=lifespan)
 
 origins = [
     "https://cookbook-frontend-seven.vercel.app",
-    "https://little-chefs-cookbook-production.up.railway.app",
+    "https://little-chefs-cookbook-production.up.railway.app"
 ]
 
 app.add_middleware(
@@ -33,6 +34,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def force_https_redirect(request, call_next):
+    if request.url.scheme == "http":
+        url = request.url.replace(scheme="https")
+        return RedirectResponse(url=str(url))
+    return await call_next(request)
 
 
 def get_db_connection():
