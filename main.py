@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, WebSocket, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
@@ -435,12 +435,24 @@ async def root():
     return {"message": "pong"}
 
 
+active_connections: List[WebSocket] = []
+
+
+async def broadcast_led_state():
+    """Send LED state update to all connected clients."""
+    for connection in active_connections:
+        await connection.send_json(led_state)
+
+
 @app.post("/led/set-color")
-def set_led_color(request: LEDRequest):
+async def set_led_color(request: LEDRequest):
     """API endpoint to update LED color and power state."""
     global led_state
     led_state["color"] = request.color
     led_state["power"] = request.power
+
+    await broadcast_led_state()
+
     return {"message": "LED state updated", "state": led_state}
 
 
@@ -448,6 +460,18 @@ def set_led_color(request: LEDRequest):
 def get_led_status():
     """API endpoint to get the current LED state."""
     return led_state
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """WebSocket endpoint to send real-time LED updates."""
+    await websocket.accept()
+    active_connections.append(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except:
+        active_connections.remove(websocket)
 
 
 @app.get("/recipes", include_in_schema=False)
