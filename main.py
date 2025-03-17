@@ -426,9 +426,10 @@ class LEDRequest(BaseModel):
     power: str
 
 
-# @app.get("/ping")
-# def ping():
-#     return {"message": "pong"}
+@app.get("/ping")
+def ping():
+    return {"message": "pong"}
+
 
 @app.get("/")
 async def root():
