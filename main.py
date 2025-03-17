@@ -415,11 +415,15 @@ def insert_sample_recipes():
     conn.close()
 
 
-led_status = {"is_on": False, "color": "#000000"}
+led_state = {
+    "color": "000000",
+    "power": "off"
+}
 
 
-class ColorRequest(BaseModel):
+class LEDRequest(BaseModel):
     color: str
+    power: str
 
 
 # @app.get("/ping")
@@ -432,17 +436,18 @@ async def root():
 
 
 @app.post("/led/set-color")
-async def set_led_color(request: ColorRequest):
-    """Update the LED color and turn it on."""
-    led_status["is_on"] = True
-    led_status["color"] = f"#{request.color}"
-    return {"message": "LED color updated", "status": led_status}
+def set_led_color(request: LEDRequest):
+    """API endpoint to update LED color and power state."""
+    global led_state
+    led_state["color"] = request.color
+    led_state["power"] = request.power
+    return {"message": "LED state updated", "state": led_state}
 
 
 @app.get("/led/status")
-async def get_led_status():
-    """Return the current LED status and color."""
-    return led_status
+def get_led_status():
+    """API endpoint to get the current LED state."""
+    return led_state
 
 
 @app.get("/recipes", include_in_schema=False)
