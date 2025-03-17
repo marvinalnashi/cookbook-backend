@@ -415,9 +415,34 @@ def insert_sample_recipes():
     conn.close()
 
 
-@app.get("/ping")
-def ping():
+led_status = {"is_on": False, "color": "#000000"}
+
+
+class ColorRequest(BaseModel):
+    color: str
+
+
+# @app.get("/ping")
+# def ping():
+#     return {"message": "pong"}
+
+@app.get("/")
+async def root():
     return {"message": "pong"}
+
+
+@app.post("/led/set-color")
+async def set_led_color(request: ColorRequest):
+    """Update the LED color and turn it on."""
+    led_status["is_on"] = True
+    led_status["color"] = f"#{request.color}"
+    return {"message": "LED color updated", "status": led_status}
+
+
+@app.get("/led/status")
+async def get_led_status():
+    """Return the current LED status and color."""
+    return led_status
 
 
 @app.get("/recipes", include_in_schema=False)
