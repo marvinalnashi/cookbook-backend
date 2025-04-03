@@ -546,33 +546,32 @@ def filter_recipes(request: RecipeFilterRequest):
 
     params = [request.occasion]
 
-    if request.match_all:
-        include_clause = " ".join([
-            f"""
-            AND EXISTS (
+    if request.match_all and request.include:
+        include_clause = " AND ".join([
+            """
+            EXISTS (
                 SELECT 1 FROM recipe_ingredients
                 WHERE recipe_ingredients.recipe_id = recipes.id
                 AND recipe_ingredients.ingredient = ?
             )
             """ for _ in request.include
         ])
-        params.extend(request.include)
-
         query = f"""
             SELECT recipes.id, recipes.title, recipes.description
             FROM recipes
-            WHERE recipes.occasion = ? 
-            {include_clause}
+            WHERE recipes.occasion = ?
+              AND {include_clause}
         """
+        params.extend(request.include)
     else:
-        placeholders = ",".join(["?"] * len(request.include)) if request.include else ""
-        query = f"""
+        query = """
             SELECT DISTINCT recipes.id, recipes.title, recipes.description
             FROM recipes
-            JOIN recipe_ingredients ON recipes.id = recipe_ingredients.recipe_id
+            LEFT JOIN recipe_ingredients ON recipes.id = recipe_ingredients.recipe_id
             WHERE recipes.occasion = ?
         """
         if request.include:
+            placeholders = ",".join(["?"] * len(request.include))
             query += f" AND recipe_ingredients.ingredient IN ({placeholders})"
             params.extend(request.include)
     if request.exclude:
@@ -587,7 +586,7 @@ def filter_recipes(request: RecipeFilterRequest):
     recipes = cursor.fetchall()
     conn.close()
 
-    return [{"id": row[0], "title": row[1], "description": row[2]} for row in recipes]
+    return [{"id": row["id"], "title": row["title"], "description": row["description"]} for row in recipes]
 
 
 if __name__ == "__main__":
