@@ -543,47 +543,35 @@ class RecipeFilterRequest(BaseModel):
 def filter_recipes(request: RecipeFilterRequest):
     conn = get_db_connection()
     cursor = conn.cursor()
-    base_query = """
-        SELECT recipes.id, recipes.title, recipes.description
-        FROM recipes
-        WHERE recipes.occasion = ?
-    """
-    params = [request.occasion]
-    if request.match_all and request.include:
-        placeholders = ",".join(["?"] * len(request.include))
-        base_query += f"""
-            AND recipes.id IN (
-                SELECT recipe_id FROM recipe_ingredients
-                WHERE ingredient IN ({placeholders})
-                GROUP BY recipe_id
-                HAVING COUNT(DISTINCT ingredient) = ?
-            )
-        """
-        params.extend(request.include)
-        params.append(len(request.include))
-    elif request.include:
-        placeholders = ",".join(["?"] * len(request.include))
-        base_query += f"""
-            AND recipes.id IN (
-                SELECT recipe_id FROM recipe_ingredients
-                WHERE ingredient IN ({placeholders})
-            )
-        """
-        params.extend(request.include)
-    if request.exclude:
-        placeholders = ",".join(["?"] * len(request.exclude))
-        base_query += f"""
-            AND recipes.id NOT IN (
-                SELECT recipe_id FROM recipe_ingredients
-                WHERE ingredient IN ({placeholders})
-            )
-        """
-        params.extend(request.exclude)
-    cursor.execute(base_query, params)
-    recipes = cursor.fetchall()
-    conn.close()
 
-    return [{"id": row["id"], "title": row["title"], "description": row["description"]} for row in recipes]
+    cursor.execute("SELECT * FROM recipes WHERE occasion = ?", (request.occasion,))
+    all_recipes = cursor.fetchall()
+
+    filtered_recipes = []
+    for recipe in all_recipes:
+        cursor.execute("SELECT ingredient FROM recipe_ingredients WHERE recipe_id = ?", (recipe["id"],))
+        ingredients = {row["ingredient"] for row in cursor.fetchall()}
+
+        if request.include:
+            if request.match_all:
+                if not all(inc in ingredients for inc in request.include):
+                    continue
+            else:
+                if not any(inc in ingredients for inc in request.include):
+                    continue
+
+        if request.exclude:
+            if any(exc in ingredients for exc in request.exclude):
+                continue
+
+        filtered_recipes.append({
+            "id": recipe["id"],
+            "title": recipe["title"],
+            "description": recipe["description"]
+        })
+
+    conn.close()
+    return filtered_recipes
 
 
 if __name__ == "__main__":
