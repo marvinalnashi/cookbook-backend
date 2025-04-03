@@ -543,46 +543,43 @@ class RecipeFilterRequest(BaseModel):
 def filter_recipes(request: RecipeFilterRequest):
     conn = get_db_connection()
     cursor = conn.cursor()
-
+    base_query = """
+        SELECT recipes.id, recipes.title, recipes.description
+        FROM recipes
+        WHERE recipes.occasion = ?
+    """
     params = [request.occasion]
-
     if request.match_all and request.include:
-        include_clause = " AND ".join([
-            """
-            EXISTS (
-                SELECT 1 FROM recipe_ingredients
-                WHERE recipe_ingredients.recipe_id = recipes.id
-                AND recipe_ingredients.ingredient = ?
+        placeholders = ",".join(["?"] * len(request.include))
+        base_query += f"""
+            AND recipes.id IN (
+                SELECT recipe_id FROM recipe_ingredients
+                WHERE ingredient IN ({placeholders})
+                GROUP BY recipe_id
+                HAVING COUNT(DISTINCT ingredient) = ?
             )
-            """ for _ in request.include
-        ])
-        query = f"""
-            SELECT recipes.id, recipes.title, recipes.description
-            FROM recipes
-            WHERE recipes.occasion = ?
-              AND {include_clause}
         """
         params.extend(request.include)
-    else:
-        query = """
-            SELECT DISTINCT recipes.id, recipes.title, recipes.description
-            FROM recipes
-            LEFT JOIN recipe_ingredients ON recipes.id = recipe_ingredients.recipe_id
-            WHERE recipes.occasion = ?
+        params.append(len(request.include))
+    elif request.include:
+        placeholders = ",".join(["?"] * len(request.include))
+        base_query += f"""
+            AND recipes.id IN (
+                SELECT recipe_id FROM recipe_ingredients
+                WHERE ingredient IN ({placeholders})
+            )
         """
-        if request.include:
-            placeholders = ",".join(["?"] * len(request.include))
-            query += f" AND recipe_ingredients.ingredient IN ({placeholders})"
-            params.extend(request.include)
+        params.extend(request.include)
     if request.exclude:
-        exclude_placeholders = ",".join(["?"] * len(request.exclude))
-        query += f"""
+        placeholders = ",".join(["?"] * len(request.exclude))
+        base_query += f"""
             AND recipes.id NOT IN (
-                SELECT recipe_id FROM recipe_ingredients WHERE ingredient IN ({exclude_placeholders})
+                SELECT recipe_id FROM recipe_ingredients
+                WHERE ingredient IN ({placeholders})
             )
         """
         params.extend(request.exclude)
-    cursor.execute(query, params)
+    cursor.execute(base_query, params)
     recipes = cursor.fetchall()
     conn.close()
 
