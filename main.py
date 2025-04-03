@@ -544,44 +544,46 @@ def filter_recipes(request: RecipeFilterRequest):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    base_query = """
-        SELECT recipes.id, recipes.title, recipes.description 
-        FROM recipes 
-        WHERE recipes.occasion = ?
-    """
     params = [request.occasion]
 
-    if request.include:
-        for ingredient in request.include:
-            base_query += """
-                AND EXISTS (
-                    SELECT 1 FROM recipe_ingredients 
-                    WHERE recipe_ingredients.recipe_id = recipes.id 
-                    AND recipe_ingredients.ingredient = ?
-                )
-            """
-            params.append(ingredient)
-
-        if not request.match_all:
-            base_query = """
-                SELECT DISTINCT recipes.id, recipes.title, recipes.description 
-                FROM recipes 
-                JOIN recipe_ingredients ON recipes.id = recipe_ingredients.recipe_id 
-                WHERE recipes.occasion = ? 
-                AND recipe_ingredients.ingredient IN ({})
-            """.format(",".join(["?"] * len(request.include)))
-            params = [request.occasion] + request.include
-
-    if request.exclude:
-        base_query += """
-            AND recipes.id NOT IN (
-                SELECT recipe_id FROM recipe_ingredients 
-                WHERE ingredient IN ({})
+    if request.match_all:
+        include_clause = " ".join([
+            f"""
+            AND EXISTS (
+                SELECT 1 FROM recipe_ingredients
+                WHERE recipe_ingredients.recipe_id = recipes.id
+                AND recipe_ingredients.ingredient = ?
             )
-        """.format(",".join(["?"] * len(request.exclude)))
-        params.extend(request.exclude)
+            """ for _ in request.include
+        ])
+        params.extend(request.include)
 
-    cursor.execute(base_query, params)
+        query = f"""
+            SELECT recipes.id, recipes.title, recipes.description
+            FROM recipes
+            WHERE recipes.occasion = ? 
+            {include_clause}
+        """
+    else:
+        placeholders = ",".join(["?"] * len(request.include)) if request.include else ""
+        query = f"""
+            SELECT DISTINCT recipes.id, recipes.title, recipes.description
+            FROM recipes
+            JOIN recipe_ingredients ON recipes.id = recipe_ingredients.recipe_id
+            WHERE recipes.occasion = ?
+        """
+        if request.include:
+            query += f" AND recipe_ingredients.ingredient IN ({placeholders})"
+            params.extend(request.include)
+    if request.exclude:
+        exclude_placeholders = ",".join(["?"] * len(request.exclude))
+        query += f"""
+            AND recipes.id NOT IN (
+                SELECT recipe_id FROM recipe_ingredients WHERE ingredient IN ({exclude_placeholders})
+            )
+        """
+        params.extend(request.exclude)
+    cursor.execute(query, params)
     recipes = cursor.fetchall()
     conn.close()
 
