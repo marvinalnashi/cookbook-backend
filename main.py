@@ -536,6 +536,7 @@ class RecipeFilterRequest(BaseModel):
     occasion: str
     include: List[str] = []
     exclude: List[str] = []
+    match_all: bool = False
 
 
 @app.post("/recipes/filter")
@@ -543,28 +544,44 @@ def filter_recipes(request: RecipeFilterRequest):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    query = """
-        SELECT DISTINCT recipes.id, recipes.title, recipes.description 
+    base_query = """
+        SELECT recipes.id, recipes.title, recipes.description 
         FROM recipes 
-        JOIN recipe_ingredients ON recipes.id = recipe_ingredients.recipe_id 
         WHERE recipes.occasion = ?
     """
     params = [request.occasion]
 
     if request.include:
-        include_query = " AND (" + " OR ".join(["recipe_ingredients.ingredient = ?"] * len(request.include)) + ")"
-        query += include_query
-        params.extend(request.include)
+        for ingredient in request.include:
+            base_query += """
+                AND EXISTS (
+                    SELECT 1 FROM recipe_ingredients 
+                    WHERE recipe_ingredients.recipe_id = recipes.id 
+                    AND recipe_ingredients.ingredient = ?
+                )
+            """
+            params.append(ingredient)
+
+        if not request.match_all:
+            base_query = """
+                SELECT DISTINCT recipes.id, recipes.title, recipes.description 
+                FROM recipes 
+                JOIN recipe_ingredients ON recipes.id = recipe_ingredients.recipe_id 
+                WHERE recipes.occasion = ? 
+                AND recipe_ingredients.ingredient IN ({})
+            """.format(",".join(["?"] * len(request.include)))
+            params = [request.occasion] + request.include
 
     if request.exclude:
-        exclude_query = """
+        base_query += """
             AND recipes.id NOT IN (
-                SELECT recipe_id FROM recipe_ingredients WHERE ingredient IN ({}))
+                SELECT recipe_id FROM recipe_ingredients 
+                WHERE ingredient IN ({})
+            )
         """.format(",".join(["?"] * len(request.exclude)))
-        query += exclude_query
         params.extend(request.exclude)
 
-    cursor.execute(query, params)
+    cursor.execute(base_query, params)
     recipes = cursor.fetchall()
     conn.close()
 
