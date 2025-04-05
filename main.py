@@ -44,6 +44,15 @@ def setup_database():
     conn = get_db_connection()
     cursor = conn.cursor()
 
+    cursor.execute("PRAGMA table_info(recipes)")
+    columns = [col[1] for col in cursor.fetchall()]
+    if "duration" not in columns:
+        try:
+            cursor.execute("ALTER TABLE recipes ADD COLUMN duration INTEGER")
+            logging.info("Added 'duration' column to recipes table.")
+        except sqlite3.OperationalError:
+            logging.warning("Could not add 'duration' column; may already exist.")
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS recipes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
