@@ -49,7 +49,8 @@ def setup_database():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT,
             description TEXT,
-            occasion TEXT
+            occasion TEXT,
+            duration INTEGER
         )
     """)
 
@@ -95,91 +96,104 @@ def insert_sample_recipes():
                 "description": "Fluffy breakfast pancakes.",
                 "occasion": "Breakfast",
                 "ingredients": ["Milk", "Butter", "Eggs", "Flour", "Sugar"],
-                "steps": ["Mix ingredients", "Cook on pan", "Serve with syrup"]
+                "steps": ["Mix ingredients", "Cook on pan", "Serve with syrup"],
+                "duration": 5
             },
             {
                 "title": "Omelette",
                 "description": "Classic omelette with cheese and vegetables.",
                 "occasion": "Breakfast",
                 "ingredients": ["Eggs", "Cheese", "Tomato", "Butter"],
-                "steps": ["Beat eggs", "Cook in butter", "Add cheese and tomato", "Serve"]
+                "steps": ["Beat eggs", "Cook in butter", "Add cheese and tomato", "Serve"],
+                "duration": 5
             },
             {
                 "title": "French Toast",
                 "description": "Sweet and crispy French toast.",
                 "occasion": "Breakfast",
                 "ingredients": ["Bread", "Eggs", "Milk", "Cinnamon"],
-                "steps": ["Mix eggs and milk", "Dip bread", "Fry", "Serve with syrup"]
+                "steps": ["Mix eggs and milk", "Dip bread", "Fry", "Serve with syrup"],
+                "duration": 5
             },
             {
                 "title": "Smoothie Bowl",
                 "description": "Healthy fruit smoothie bowl.",
                 "occasion": "Breakfast",
                 "ingredients": ["Banana", "Milk", "Spinach", "Yoghurt"],
-                "steps": ["Blend ingredients", "Pour into bowl", "Top with granola"]
+                "steps": ["Blend ingredients", "Pour into bowl", "Top with granola"],
+                "duration": 5
             },
             {
                 "title": "Avocado Toast",
                 "description": "Toasted bread with mashed avocado and tomato.",
                 "occasion": "Breakfast",
                 "ingredients": ["Bread", "Avocado", "Tomato", "Salt"],
-                "steps": ["Toast bread", "Mash avocado", "Add tomato slices", "Serve"]
+                "steps": ["Toast bread", "Mash avocado", "Add tomato slices", "Serve"],
+                "duration": 5
             },
             {
                 "title": "Muffins",
                 "description": "Soft and delicious breakfast muffins.",
                 "occasion": "Breakfast",
                 "ingredients": ["Flour", "Eggs", "Milk", "Sugar", "Butter"],
-                "steps": ["Mix ingredients", "Bake at 180°C for 20 mins", "Serve"]
+                "steps": ["Mix ingredients", "Bake at 180°C for 20 mins", "Serve"],
+                "duration": 5
             },
             {
                 "title": "Scrambled Eggs",
                 "description": "Soft scrambled eggs with butter.",
                 "occasion": "Breakfast",
                 "ingredients": ["Eggs", "Butter", "Salt", "Pepper"],
-                "steps": ["Beat eggs", "Cook in butter", "Season and serve"]
+                "steps": ["Beat eggs", "Cook in butter", "Season and serve"],
+                "duration": 5
             },
             {
                 "title": "Banana Pancakes",
                 "description": "Healthy banana-based pancakes.",
                 "occasion": "Breakfast",
                 "ingredients": ["Banana", "Eggs", "Oats", "Milk"],
-                "steps": ["Blend ingredients", "Cook in pan", "Serve"]
+                "steps": ["Blend ingredients", "Cook in pan", "Serve"],
+                "duration": 5
             },
             {
                 "title": "Egg Benedict",
                 "description": "Poached eggs on toasted bread with hollandaise sauce.",
                 "occasion": "Breakfast",
                 "ingredients": ["Eggs", "Butter", "Bread", "Lemon"],
-                "steps": ["Poach eggs", "Toast bread", "Make hollandaise sauce", "Assemble and serve"]
+                "steps": ["Poach eggs", "Toast bread", "Make hollandaise sauce", "Assemble and serve"],
+                "duration": 5
             },
             {
                 "title": "Berry Parfait",
                 "description": "Layered yoghurt, berries, and granola.",
                 "occasion": "Breakfast",
                 "ingredients": ["Yoghurt", "Blueberries", "Strawberries", "Granola"],
-                "steps": ["Layer ingredients", "Refrigerate for 10 mins", "Serve"]
+                "steps": ["Layer ingredients", "Refrigerate for 10 mins", "Serve"],
+                "duration": 5
             },
             {
                 "title": "Cinnamon Rolls",
                 "description": "Soft rolls with cinnamon sugar filling.",
                 "occasion": "Breakfast",
                 "ingredients": ["Flour", "Sugar", "Milk", "Cinnamon", "Butter"],
-                "steps": ["Make dough", "Add cinnamon filling", "Bake", "Drizzle with icing"]
+                "steps": ["Make dough", "Add cinnamon filling", "Bake", "Drizzle with icing"],
+                "duration": 5
             },
             {
                 "title": "Vegetable Omelette",
                 "description": "Egg omelette with fresh vegetables.",
                 "occasion": "Breakfast",
                 "ingredients": ["Eggs", "Tomato", "Spinach", "Cheese"],
-                "steps": ["Beat eggs", "Cook in pan", "Add vegetables", "Fold and serve"]
+                "steps": ["Beat eggs", "Cook in pan", "Add vegetables", "Fold and serve"],
+                "duration": 5
             },
             {
                 "title": "Peanut Butter Toast",
                 "description": "Crunchy toast with peanut butter and honey.",
                 "occasion": "Breakfast",
                 "ingredients": ["Bread", "Peanut Butter", "Honey", "Banana"],
-                "steps": ["Toast bread", "Spread peanut butter", "Add banana slices and honey", "Serve"]
+                "steps": ["Toast bread", "Spread peanut butter", "Add banana slices and honey", "Serve"],
+                "duration": 5
             },
             # Lunch Recipes
             {
@@ -187,77 +201,88 @@ def insert_sample_recipes():
                 "description": "Fresh salad with chicken and dressing.",
                 "occasion": "Lunch",
                 "ingredients": ["Lettuce", "Chicken", "Cheese", "Croutons"],
-                "steps": ["Chop ingredients", "Mix with dressing", "Serve"]
+                "steps": ["Chop ingredients", "Mix with dressing", "Serve"],
+                "duration": 5
             },
             {
                 "title": "Tomato Soup",
                 "description": "Creamy homemade tomato soup.",
                 "occasion": "Lunch",
                 "ingredients": ["Tomato", "Onion", "Garlic", "Milk"],
-                "steps": ["Sauté onion and garlic", "Add tomatoes", "Blend and serve"]
+                "steps": ["Sauté onion and garlic", "Add tomatoes", "Blend and serve"],
+                "duration": 5
             },
             {
                 "title": "Grilled Cheese Sandwich",
                 "description": "Crispy sandwich with melted cheese.",
                 "occasion": "Lunch",
                 "ingredients": ["Bread", "Cheese", "Butter"],
-                "steps": ["Butter bread", "Add cheese", "Grill until golden"]
+                "steps": ["Butter bread", "Add cheese", "Grill until golden"],
+                "duration": 5
             },
             {
                 "title": "Vegetable Stir-Fry",
                 "description": "Stir-fried vegetables with soy sauce.",
                 "occasion": "Lunch",
                 "ingredients": ["Carrot", "Tomato", "Broccoli", "Garlic"],
-                "steps": ["Chop vegetables", "Stir-fry in pan", "Add soy sauce and serve"]
+                "steps": ["Chop vegetables", "Stir-fry in pan", "Add soy sauce and serve"],
+                "duration": 5
             },
             {
                 "title": "Chicken Wrap",
                 "description": "Grilled chicken with vegetables in a wrap.",
                 "occasion": "Lunch",
                 "ingredients": ["Chicken", "Lettuce", "Tomato", "Tortilla"],
-                "steps": ["Grill chicken", "Wrap with vegetables", "Serve"]
+                "steps": ["Grill chicken", "Wrap with vegetables", "Serve"],
+                "duration": 5
             },
             {
                 "title": "Cucumber Sandwich",
                 "description": "Light and fresh sandwich with cucumber.",
                 "occasion": "Lunch",
                 "ingredients": ["Bread", "Cucumber", "Butter", "Salt"],
-                "steps": ["Spread butter on bread", "Add cucumber slices", "Serve"]
+                "steps": ["Spread butter on bread", "Add cucumber slices", "Serve"],
+                "duration": 5
             },
             {
                 "title": "Club Sandwich",
                 "description": "Triple-layered sandwich with chicken and vegetables.",
                 "occasion": "Lunch",
                 "ingredients": ["Bread", "Chicken", "Lettuce", "Tomato", "Cheese"],
-                "steps": ["Toast bread", "Layer ingredients", "Cut into triangles", "Serve"]
+                "steps": ["Toast bread", "Layer ingredients", "Cut into triangles", "Serve"],
+                "duration": 5
             },
             {
                 "title": "Pumpkin Soup",
                 "description": "Creamy pumpkin soup with spices.",
                 "occasion": "Lunch",
                 "ingredients": ["Pumpkin", "Onion", "Milk", "Salt", "Pepper"],
-                "steps": ["Cook pumpkin and onion", "Blend with milk", "Season and serve"]
+                "steps": ["Cook pumpkin and onion", "Blend with milk", "Season and serve"],
+                "duration": 5
             },
             {
                 "title": "Caprese Salad",
                 "description": "Fresh mozzarella, tomato, and basil salad.",
                 "occasion": "Lunch",
                 "ingredients": ["Tomato", "Mozzarella", "Basil", "Olive Oil"],
-                "steps": ["Slice ingredients", "Arrange on plate", "Drizzle with olive oil", "Serve"]
+                "steps": ["Slice ingredients", "Arrange on plate", "Drizzle with olive oil", "Serve"],
+                "duration": 5
             },
             {
                 "title": "Grilled Chicken Salad",
                 "description": "Healthy salad with grilled chicken.",
                 "occasion": "Lunch",
                 "ingredients": ["Chicken", "Lettuce", "Cucumber", "Carrot"],
-                "steps": ["Grill chicken", "Chop vegetables", "Mix with dressing", "Serve"]
+                "steps": ["Grill chicken", "Chop vegetables", "Mix with dressing", "Serve"],
+                "duration": 5
             },
             {
                 "title": "Veggie Wrap",
                 "description": "A tortilla wrap filled with fresh vegetables.",
                 "occasion": "Lunch",
                 "ingredients": ["Tortilla", "Tomato", "Cucumber", "Carrot", "Cheese"],
-                "steps": ["Chop vegetables", "Wrap ingredients in tortilla", "Serve"]
+                "steps": ["Chop vegetables", "Wrap ingredients in tortilla", "Serve"],
+                "duration": 5
             },
             # Dinner Recipes
             {
@@ -265,77 +290,88 @@ def insert_sample_recipes():
                 "description": "Juicy grilled steak with seasoning.",
                 "occasion": "Dinner",
                 "ingredients": ["Beef", "Salt", "Pepper"],
-                "steps": ["Season steak", "Grill for 5 mins per side", "Serve"]
+                "steps": ["Season steak", "Grill for 5 mins per side", "Serve"],
+                "duration": 5
             },
             {
                 "title": "Spaghetti Bolognese",
                 "description": "Classic pasta with meat sauce.",
                 "occasion": "Dinner",
                 "ingredients": ["Spaghetti", "Tomato", "Ground Beef", "Onion"],
-                "steps": ["Cook pasta", "Prepare sauce", "Serve"]
+                "steps": ["Cook pasta", "Prepare sauce", "Serve"],
+                "duration": 5
             },
             {
                 "title": "Mutton Curry",
                 "description": "Spiced mutton curry with rice.",
                 "occasion": "Dinner",
                 "ingredients": ["Mutton", "Tomato", "Garlic", "Onion"],
-                "steps": ["Cook mutton", "Prepare sauce", "Serve with rice"]
+                "steps": ["Cook mutton", "Prepare sauce", "Serve with rice"],
+                "duration": 5
             },
             {
                 "title": "Pork Chops",
                 "description": "Juicy grilled pork chops.",
                 "occasion": "Dinner",
                 "ingredients": ["Pork", "Salt", "Garlic"],
-                "steps": ["Season pork", "Grill until cooked", "Serve"]
+                "steps": ["Season pork", "Grill until cooked", "Serve"],
+                "duration": 5
             },
             {
                 "title": "Chicken Alfredo",
                 "description": "Creamy chicken pasta.",
                 "occasion": "Dinner",
                 "ingredients": ["Chicken", "Milk", "Pasta", "Cheese"],
-                "steps": ["Cook pasta", "Prepare sauce", "Mix and serve"]
+                "steps": ["Cook pasta", "Prepare sauce", "Mix and serve"],
+                "duration": 5
             },
             {
                 "title": "Vegetable Stew",
                 "description": "Healthy vegetable stew.",
                 "occasion": "Dinner",
                 "ingredients": ["Carrot", "Tomato", "Potato", "Onion"],
-                "steps": ["Chop vegetables", "Cook until tender", "Serve"]
+                "steps": ["Chop vegetables", "Cook until tender", "Serve"],
+                "duration": 5
             },
             {
                 "title": "BBQ Ribs",
                 "description": "Slow-cooked BBQ ribs with sauce.",
                 "occasion": "Dinner",
                 "ingredients": ["Pork", "BBQ Sauce", "Salt", "Garlic"],
-                "steps": ["Marinate ribs", "Slow cook for 2 hours", "Brush with BBQ sauce", "Serve"]
+                "steps": ["Marinate ribs", "Slow cook for 2 hours", "Brush with BBQ sauce", "Serve"],
+                "duration": 5
             },
             {
                 "title": "Beef Stir-Fry",
                 "description": "Quick stir-fried beef with vegetables.",
                 "occasion": "Dinner",
                 "ingredients": ["Beef", "Broccoli", "Carrot", "Soy Sauce"],
-                "steps": ["Slice beef", "Stir-fry with vegetables", "Add soy sauce", "Serve"]
+                "steps": ["Slice beef", "Stir-fry with vegetables", "Add soy sauce", "Serve"],
+                "duration": 5
             },
             {
                 "title": "Chicken Curry",
                 "description": "Spicy chicken curry with rice.",
                 "occasion": "Dinner",
                 "ingredients": ["Chicken", "Tomato", "Onion", "Garlic", "Milk"],
-                "steps": ["Sauté onions", "Add chicken and spices", "Simmer with tomato and milk", "Serve with rice"]
+                "steps": ["Sauté onions", "Add chicken and spices", "Simmer with tomato and milk", "Serve with rice"],
+                "duration": 5
             },
             {
                 "title": "Stuffed Bell Peppers",
                 "description": "Bell peppers stuffed with meat and rice.",
                 "occasion": "Dinner",
                 "ingredients": ["Bell Peppers", "Ground Beef", "Rice", "Tomato"],
-                "steps": ["Hollow peppers", "Stuff with mixture", "Bake and serve"]
+                "steps": ["Hollow peppers", "Stuff with mixture", "Bake and serve"],
+                "duration": 5
             },
             {
                 "title": "Lasagna",
                 "description": "Layered pasta with beef and cheese.",
                 "occasion": "Dinner",
                 "ingredients": ["Lasagna Noodles", "Beef", "Tomato Sauce", "Cheese"],
-                "steps": ["Prepare sauce", "Layer with pasta and cheese", "Bake", "Serve"]
+                "steps": ["Prepare sauce", "Layer with pasta and cheese", "Bake", "Serve"],
+                "duration": 5
             },
             # Dessert Recipes
             {
@@ -343,62 +379,70 @@ def insert_sample_recipes():
                 "description": "Rich chocolate cake with frosting.",
                 "occasion": "Dessert",
                 "ingredients": ["Flour", "Sugar", "Milk", "Cocoa Powder"],
-                "steps": ["Mix ingredients", "Bake at 180°C for 30 mins", "Frost and serve"]
+                "steps": ["Mix ingredients", "Bake at 180°C for 30 mins", "Frost and serve"],
+                "duration": 5
             },
             {
                 "title": "Fruit Salad",
                 "description": "Mixed fruit salad with yoghurt.",
                 "occasion": "Dessert",
                 "ingredients": ["Banana", "Apple", "Yoghurt", "Honey"],
-                "steps": ["Chop fruits", "Mix with yoghurt", "Serve"]
+                "steps": ["Chop fruits", "Mix with yoghurt", "Serve"],
+                "duration": 5
             },
             {
                 "title": "Ice Cream Sundae",
                 "description": "Ice cream with toppings.",
                 "occasion": "Dessert",
                 "ingredients": ["Milk", "Sugar", "Chocolate Syrup"],
-                "steps": ["Prepare ice cream", "Add toppings", "Serve"]
+                "steps": ["Prepare ice cream", "Add toppings", "Serve"],
+                "duration": 5
             },
             {
                 "title": "Cheesecake",
                 "description": "Rich and creamy baked cheesecake.",
                 "occasion": "Dessert",
                 "ingredients": ["Cream Cheese", "Sugar", "Eggs", "Butter"],
-                "steps": ["Mix ingredients", "Bake at 180°C for 45 mins", "Cool and serve"]
+                "steps": ["Mix ingredients", "Bake at 180°C for 45 mins", "Cool and serve"],
+                "duration": 5
             },
             {
                 "title": "Strawberry Shortcake",
                 "description": "Light cake with strawberries and cream.",
                 "occasion": "Dessert",
                 "ingredients": ["Flour", "Sugar", "Strawberries", "Milk"],
-                "steps": ["Bake cake", "Slice strawberries", "Layer with cream", "Serve"]
+                "steps": ["Bake cake", "Slice strawberries", "Layer with cream", "Serve"],
+                "duration": 5
             },
             {
                 "title": "Chocolate Chip Cookies",
                 "description": "Classic cookies with chocolate chips.",
                 "occasion": "Dessert",
                 "ingredients": ["Flour", "Butter", "Sugar", "Chocolate Chips"],
-                "steps": ["Mix dough", "Shape cookies", "Bake for 12 mins", "Serve"]
+                "steps": ["Mix dough", "Shape cookies", "Bake for 12 mins", "Serve"],
+                "duration": 5
             },
             {
                 "title": "Apple Pie",
                 "description": "Traditional apple pie with cinnamon.",
                 "occasion": "Dessert",
                 "ingredients": ["Apples", "Flour", "Sugar", "Cinnamon", "Butter"],
-                "steps": ["Prepare filling", "Roll crust", "Bake for 45 mins", "Serve"]
+                "steps": ["Prepare filling", "Roll crust", "Bake for 45 mins", "Serve"],
+                "duration": 5
             },
             {
                 "title": "Lemon Tart",
                 "description": "Tangy lemon tart with buttery crust.",
                 "occasion": "Dessert",
                 "ingredients": ["Lemon", "Sugar", "Butter", "Flour"],
-                "steps": ["Prepare crust", "Make lemon filling", "Bake and serve"]
+                "steps": ["Prepare crust", "Make lemon filling", "Bake and serve"],
+                "duration": 5
             }
         ]
 
         for recipe in sample_recipes:
-            cursor.execute("INSERT INTO recipes (title, description, occasion) VALUES (?, ?, ?)",
-                           (recipe["title"], recipe["description"], recipe["occasion"]))
+            cursor.execute("INSERT INTO recipes (title, description, occasion, duration) VALUES (?, ?, ?)",
+                           (recipe["title"], recipe["description"], recipe["occasion"], recipe["duration"]))
             recipe_id = cursor.lastrowid
 
             for ingredient in recipe["ingredients"]:
@@ -497,7 +541,8 @@ def get_recipes():
             "description": recipe["description"],
             "occasion": recipe["occasion"],
             "ingredients": ingredients,
-            "steps": steps
+            "steps": steps,
+            "duration": recipe["duration"]
         })
 
     conn.close()
@@ -528,7 +573,8 @@ def get_recipe(recipe_id: int):
         "description": recipe["description"],
         "occasion": recipe["occasion"],
         "ingredients": ingredients,
-        "steps": steps
+        "steps": steps,
+        "duration": recipe["duration"]
     }
 
 
@@ -567,7 +613,8 @@ def filter_recipes(request: RecipeFilterRequest):
         filtered_recipes.append({
             "id": recipe["id"],
             "title": recipe["title"],
-            "description": recipe["description"]
+            "description": recipe["description"],
+            "duration": recipe["duration"]
         })
 
     conn.close()
