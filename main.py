@@ -22,9 +22,9 @@ async def lifespan(app: FastAPI):
     logging.info("Starting application...")
     setup_database()
     insert_sample_recipes()
+    logging.info("Startup complete.")
     yield
     logging.info("Shutting down application...")
-
 
 app = FastAPI(
     lifespan=lifespan,
@@ -41,33 +41,39 @@ app.add_middleware(
 )
 
 
+MQTT_TOPIC_PREFIX = "nav/"
+MQTT_TOPICS = [f"{MQTT_TOPIC_PREFIX}{d}" for d in ["up", "down", "left", "right", "home"]]
+
 def on_connect(client, userdata, flags, rc):
     print("Connected to HiveMQ with result code", rc)
-    for topic in ["nav/up", "nav/down", "nav/left", "nav/right", "nav/select"]:
+    for topic in MQTT_TOPICS:
         client.subscribe(topic)
-
 
 def on_message(client, userdata, msg):
     print(f"MQTT: {msg.topic} = {msg.payload}")
     try:
-        payload = msg.payload.decode()
-        message = json.dumps({
-            "topic": msg.topic,
-            "payload": payload
-        })
-        for conn in active_connections:
-            asyncio.create_task(conn.send_text(message))
+        topic = msg.topic
+        payload = msg.payload.decode("utf-8").strip().lower()
+        if topic.startswith(MQTT_TOPIC_PREFIX) and payload in ["1", "true"]:
+            direction = topic.replace(MQTT_TOPIC_PREFIX, "")
+            asyncio.create_task(send_navigation_command(direction))
     except Exception as e:
-        print(f"Error forwarding MQTT to WebSocket: {e}")
+        print(f"Error handling MQTT message: {e}")
 
-
+async def send_navigation_command(direction: str):
+    data = {"type": "nav", "command": direction}
+    for connection in active_connections:
+        try:
+            await connection.send_json(data)
+        except Exception as e:
+            logging.error(f"Failed to send WS message: {e}")
+            active_connections.remove(connection)
 
 mqtt_client = mqtt.Client()
 mqtt_client.username_pw_set(
     os.getenv("MQTT_USERNAME", "littlechef"),
     os.getenv("MQTT_PASSWORD", "Cookbook123")
 )
-
 mqtt_client.tls_set(
     ca_certs=certifi.where(),
     certfile=None,
@@ -75,13 +81,23 @@ mqtt_client.tls_set(
     cert_reqs=ssl.CERT_REQUIRED,
     tls_version=ssl.PROTOCOL_TLSv1_2
 )
-
 mqtt_client.on_connect = on_connect
 mqtt_client.on_message = on_message
-
 mqtt_client.connect("ef137b86ea2944f19a8b1bb71757d7bb.s1.eu.hivemq.cloud", 8883)
-
 mqtt_client.loop_start()
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    active_connections.append(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except Exception as e:
+        print(f"WebSocket error: {e}")
+    finally:
+        active_connections.remove(websocket)
 
 
 def get_db_connection():
@@ -561,31 +577,6 @@ async def set_led_color(request: LEDRequest):
 def get_led_status():
     """API endpoint to get the current LED state."""
     return led_state
-
-
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    active_connections.append(websocket)
-    try:
-        while True:
-            msg = await websocket.receive_text()
-            print(f"Received message: {msg}")
-            for conn in active_connections:
-                if conn != websocket:
-                    await conn.send_text(msg)
-    except Exception as e:
-        print(f"WebSocket error: {e}")
-    finally:
-        active_connections.remove(websocket)
-
-
-async def broadcast_ws(data):
-    for ws in websocket_connections:
-        try:
-            await ws.send_text(json.dumps(data))
-        except:
-            pass
 
 
 @app.get("/recipes", include_in_schema=False)
