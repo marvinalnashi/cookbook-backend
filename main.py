@@ -6,8 +6,12 @@ import sqlite3
 import logging
 from contextlib import asynccontextmanager
 import uvicorn
+import asyncio
+import paho.mqtt.client as mqtt
+import json
 
 logging.basicConfig(level=logging.INFO)
+websocket_connections: List[WebSocket] = []
 
 
 @asynccontextmanager
@@ -32,6 +36,25 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def on_connect(client, userdata, flags, rc):
+    print("Connected to MQTT")
+    for topic in ["nav/up", "nav/down", "nav/left", "nav/right", "nav/select"]:
+        client.subscribe(topic)
+
+
+def on_message(client, userdata, msg):
+    payload = msg.payload.decode()
+    print(f"Received MQTT: {msg.topic} - {payload}")
+    asyncio.run(broadcast_ws({"topic": msg.topic, "value": payload}))
+
+
+mqtt_client = mqtt.Client()
+mqtt_client.on_connect = on_connect
+mqtt_client.on_message = on_message
+mqtt_client.connect("localhost", 1883)
+mqtt_client.loop_start()
 
 
 def get_db_connection():
@@ -463,6 +486,25 @@ led_state = {
     "color": "000000",
     "power": "off"
 }
+
+
+@app.websocket("/ws/nav")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    websocket_connections.append(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except:
+        websocket_connections.remove(websocket)
+
+
+async def broadcast_ws(data):
+    for ws in websocket_connections:
+        try:
+            await ws.send_text(json.dumps(data))
+        except:
+            pass
 
 
 class LEDRequest(BaseModel):
