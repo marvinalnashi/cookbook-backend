@@ -50,14 +50,16 @@ def on_connect(client, userdata, flags, rc):
 def on_message(client, userdata, msg):
     print(f"MQTT: {msg.topic} = {msg.payload}")
     try:
+        payload = msg.payload.decode()
         message = json.dumps({
             "topic": msg.topic,
-            "payload": msg.payload.decode()
+            "payload": payload
         })
-        for connection in active_connections:
-            asyncio.create_task(connection.send_text(message))
+        for conn in active_connections:
+            asyncio.create_task(conn.send_text(message))
     except Exception as e:
-        print(f"Error forwarding message: {e}")
+        print(f"Error forwarding MQTT to WebSocket: {e}")
+
 
 
 mqtt_client = mqtt.Client()
