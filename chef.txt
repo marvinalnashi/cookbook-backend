@@ -3,76 +3,59 @@ import time
 import paho.mqtt.client as mqtt
 import board
 import busio
-from digitalio import DigitalInOut
 from adafruit_pn532.i2c import PN532_I2C
 from mpu6050 import mpu6050
+import ssl
+import certifi
 
-# MQTT Configuration
-MQTT_BROKER = "broker.hivemq.com"
-MQTT_TOPIC = "sensor/data"
+# CONFIGURATION
+UUID = "rpi"
+MQTT_BROKER = "ef137b86ea2944f19a8b1bb71757d7bb.s1.eu.hivemq.cloud"
+MQTT_PORT = 8883
+MQTT_USERNAME = "littlechef"
+MQTT_PASSWORD = "Cookbook123"
 
-# MQTT Connection
+# MQTT CONNECTION
 client = mqtt.Client()
-client.connect(MQTT_BROKER)
+client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
+client.tls_set(ca_certs=certifi.where(), tls_version=ssl.PROTOCOL_TLSv1_2)
+client.connect(MQTT_BROKER, MQTT_PORT)
+client.loop_start()
 
+# GPIO SETUP
 GPIO.setmode(GPIO.BCM)
+HALL_SENSORS = {
+    5: "up",
+    6: "down",
+    13: "left",
+    19: "right",
+    26: "home"
+}
+for pin in HALL_SENSORS:
+    GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-# Setup Hall Sensors
-HALL_SENSOR_PIN1 = 5  # GPIO5
-HALL_SENSOR_PIN2 = 6
-HALL_SENSOR_PIN3 = 13
-HALL_SENSOR_PIN4 = 19
-HALL_SENSOR_PIN5 = 26
-
-GPIO.setup(HALL_SENSOR_PIN1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup(HALL_SENSOR_PIN2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup(HALL_SENSOR_PIN3, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup(HALL_SENSOR_PIN4, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup(HALL_SENSOR_PIN5, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-
-def read_hall_sensors():
-    MQTT_TOPIC_HALL = MQTT_TOPIC + "/hall"
-    sensor_state1 = GPIO.input(HALL_SENSOR_PIN1)
-    sensor_state2 = GPIO.input(HALL_SENSOR_PIN2)
-    sensor_state3 = GPIO.input(HALL_SENSOR_PIN3)
-    sensor_state4 = GPIO.input(HALL_SENSOR_PIN4)
-    sensor_state5 = GPIO.input(HALL_SENSOR_PIN5)
-    if sensor_state1 == GPIO.LOW:
-        client.publish(MQTT_TOPIC_HALL, f"1")
-        return True
-    elif sensor_state2 == GPIO.LOW:
-        client.publish(MQTT_TOPIC_HALL, f"2")
-        return True
-    elif sensor_state3 == GPIO.LOW:
-        client.publish(MQTT_TOPIC_HALL, f"3")
-        return True
-    elif sensor_state4 == GPIO.LOW:
-        client.publish(MQTT_TOPIC_HALL, f"4")
-        return True
-    elif sensor_state5 == GPIO.LOW:
-        client.publish(MQTT_TOPIC_HALL, f"5")
-        return True
-    return False
-
-# RFID sensor setup
+# RFID SETUP
 i2c = busio.I2C(board.SCL, board.SDA)
-#reset_pin = DigitalInOut(board.D20)
-pn532 = PN532_I2C(i2c, debug=False) # if this errors, add reset=reset_pin and uncomment the above
+pn532 = PN532_I2C(i2c, debug=False)
 pn532.SAM_configuration()
 
-def read_rfid():
-    uid = pn532.read_passive_target(timeout=0.5)
-    if uid:
-        print('Found card with UID:', [hex(i) for i in uid])
-        client.publish(MQTT_TOPIC + "/rfid", f"{hex(uid[0])}")
-        return True
-    return False
-
+# ACCELEROMETER SETUP
 sensor = mpu6050(0x68)
-
 SMOOTHING_WINDOW = 5
 accel_x_values = []
 accel_y_values = []
+
+# SENSOR FUNCTIONS
+
+def read_hall_sensors():
+    for pin, action in HALL_SENSORS.items():
+        if GPIO.input(pin) == GPIO.LOW:
+            payload = f"{UUID}::{action}"
+            topic = f"nav/{action}"
+            client.publish(topic, payload)
+            print(f"Published to {topic}: {payload}")
+            return True
+    return False
 
 def read_motion():
     THRESHOLD = 1.5
@@ -89,38 +72,47 @@ def read_motion():
         accel_x_values.pop(0)
         accel_y_values.pop(0)
 
-    avg_accel_x = sum(accel_x_values) / len(accel_x_values)
-    avg_accel_y = sum(accel_y_values) / len(accel_y_values)
+    avg_x = sum(accel_x_values) / len(accel_x_values)
+    avg_y = sum(accel_y_values) / len(accel_y_values)
 
-    MQTT_TOPIC_MOTION = MQTT_TOPIC + "/motion"
-
-    if avg_accel_x > THRESHOLD:
-        client.publish(MQTT_TOPIC_MOTION, f"FORWARD")
-        return True
-    elif avg_accel_x < -THRESHOLD:
-        client.publish(MQTT_TOPIC_MOTION, f"BACKWARD")
-        return True
-    elif avg_accel_y > THRESHOLD:
-        client.publish(MQTT_TOPIC_MOTION, f"LEFT")
-        return True
-    elif avg_accel_y < -THRESHOLD:
-        client.publish(MQTT_TOPIC_MOTION, f"RIGHT")
+    if avg_x > THRESHOLD:
+        return publish_motion("FORWARD")
+    elif avg_x < -THRESHOLD:
+        return publish_motion("BACKWARD")
+    elif avg_y > THRESHOLD:
+        return publish_motion("LEFT")
+    elif avg_y < -THRESHOLD:
+        return publish_motion("RIGHT")
     return False
 
-# Main loop, hall sensors first then read_motion then rfid
+def publish_motion(direction):
+    topic = "sensor/data/motion"
+    payload = f"{UUID}::{direction}"
+    client.publish(topic, payload)
+    print(f"Published motion: {payload}")
+    return True
+
+def read_rfid():
+    uid = pn532.read_passive_target(timeout=0.5)
+    if uid:
+        hex_uid = "-".join([hex(i)[2:] for i in uid])
+        client.publish("sensor/data/rfid", f"{UUID}::{hex_uid}")
+        print(f"Published RFID: {UUID}::{hex_uid}")
+        return True
+    return False
+
+# MAIN LOOP
 try:
+    print("Starting Sensor Loop...")
     while True:
         if read_hall_sensors():
-            print("hall sensor detected")
+            print("HALL SENSOR ACTIVATED")
         elif read_motion():
-            print("motion detected")
+            print("MOTION DETECTED")
         elif read_rfid():
-            print("rfid detected")
-        time.sleep(1)
+            print("RFID DETECTED")
+        time.sleep(0.5)
 
 except KeyboardInterrupt:
-    print("Stopping Sensor Handler...")
+    print("Stopping sensor handler...")
     GPIO.cleanup()
-
-
-
