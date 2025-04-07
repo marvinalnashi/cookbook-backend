@@ -49,11 +49,15 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(client, userdata, msg):
     print(f"MQTT: {msg.topic} = {msg.payload}")
-    payload = msg.payload.decode()
-    asyncio.run(broadcast_ws({"topic": msg.topic, "value": payload}))
-    logging.info(f"MQTT: {msg.topic} = {msg.payload}")
-    message = msg.topic
-    asyncio.create_task(broadcast_message(message))
+    try:
+        message = json.dumps({
+            "topic": msg.topic,
+            "payload": msg.payload.decode()
+        })
+        for connection in active_connections:
+            asyncio.create_task(connection.send_text(message))
+    except Exception as e:
+        print(f"Error forwarding message: {e}")
 
 
 mqtt_client = mqtt.Client()
