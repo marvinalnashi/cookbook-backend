@@ -1,7 +1,7 @@
 from fastapi import FastAPI, WebSocket, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List
 import sqlite3
 import logging
 from contextlib import asynccontextmanager
@@ -9,6 +9,9 @@ import uvicorn
 import asyncio
 import paho.mqtt.client as mqtt
 import json
+import ssl
+import certifi
+import os
 
 logging.basicConfig(level=logging.INFO)
 websocket_connections: List[WebSocket] = []
@@ -39,21 +42,36 @@ app.add_middleware(
 
 
 def on_connect(client, userdata, flags, rc):
-    print("Connected to MQTT")
+    print("Connected to HiveMQ with result code", rc)
     for topic in ["nav/up", "nav/down", "nav/left", "nav/right", "nav/select"]:
         client.subscribe(topic)
 
 
 def on_message(client, userdata, msg):
+    print(f"MQTT: {msg.topic} = {msg.payload}")
     payload = msg.payload.decode()
-    print(f"Received MQTT: {msg.topic} - {payload}")
     asyncio.run(broadcast_ws({"topic": msg.topic, "value": payload}))
 
 
 mqtt_client = mqtt.Client()
+mqtt_client.username_pw_set(
+    os.getenv("MQTT_USERNAME", "littlechef"),
+    os.getenv("MQTT_PASSWORD", "Cookbook123")
+)
+
+mqtt_client.tls_set(
+    ca_certs=certifi.where(),
+    certfile=None,
+    keyfile=None,
+    cert_reqs=ssl.CERT_REQUIRED,
+    tls_version=ssl.PROTOCOL_TLSv1_2
+)
+
 mqtt_client.on_connect = on_connect
 mqtt_client.on_message = on_message
-mqtt_client.connect("localhost", 1883)
+
+mqtt_client.connect("ef137b86ea2944f19a8b1bb71757d7bb.s1.eu.hivemq.cloud", 8883)
+
 mqtt_client.loop_start()
 
 
@@ -488,25 +506,6 @@ led_state = {
 }
 
 
-@app.websocket("/ws/nav")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    websocket_connections.append(websocket)
-    try:
-        while True:
-            await websocket.receive_text()
-    except:
-        websocket_connections.remove(websocket)
-
-
-async def broadcast_ws(data):
-    for ws in websocket_connections:
-        try:
-            await ws.send_text(json.dumps(data))
-        except:
-            pass
-
-
 class LEDRequest(BaseModel):
     color: str
     power: str
@@ -549,16 +548,23 @@ def get_led_status():
     return led_state
 
 
-@app.websocket("/ws")
+@app.websocket("/ws/nav")
 async def websocket_endpoint(websocket: WebSocket):
-    """WebSocket endpoint to send real-time LED updates."""
     await websocket.accept()
-    active_connections.append(websocket)
+    websocket_connections.append(websocket)
     try:
         while True:
             await websocket.receive_text()
     except:
-        active_connections.remove(websocket)
+        websocket_connections.remove(websocket)
+
+
+async def broadcast_ws(data):
+    for ws in websocket_connections:
+        try:
+            await ws.send_text(json.dumps(data))
+        except:
+            pass
 
 
 @app.get("/recipes", include_in_schema=False)
