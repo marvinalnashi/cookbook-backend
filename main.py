@@ -47,8 +47,12 @@ def on_connect(client, userdata, flags, rc):
         client.subscribe(topic)
 
 
+event_loop = asyncio.get_event_loop()
+
+
 def on_message(client, userdata, msg):
     print(f"MQTT: {msg.topic} = {msg.payload}")
+
     try:
         topic_parts = msg.topic.split("/")
         if len(topic_parts) == 2 and topic_parts[0] == "nav":
@@ -68,8 +72,16 @@ def on_message(client, userdata, msg):
 
             message_json = json.dumps(message_dict)
 
-            for connection in active_connections:
-                asyncio.create_task(connection.send_text(message_json))
+            async def send_to_all():
+                for connection in active_connections:
+                    try:
+                        await connection.send_text(message_json)
+                    except Exception as e:
+                        print(f"Failed to send WebSocket message: {e}")
+                        if connection in active_connections:
+                            active_connections.remove(connection)
+
+            asyncio.run_coroutine_threadsafe(send_to_all(), event_loop)
 
     except Exception as e:
         print(f"Error forwarding message: {e}")
@@ -580,6 +592,7 @@ import json
 
 navigation_state = {}
 
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
@@ -595,7 +608,6 @@ async def websocket_endpoint(websocket: WebSocket):
                     await conn.send_json(data)
     except:
         active_connections.remove(websocket)
-
 
 
 async def broadcast_ws(data):
