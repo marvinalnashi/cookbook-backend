@@ -50,12 +50,27 @@ def on_connect(client, userdata, flags, rc):
 def on_message(client, userdata, msg):
     print(f"MQTT: {msg.topic} = {msg.payload}")
     try:
-        message = json.dumps({
-            "topic": msg.topic,
-            "payload": msg.payload.decode()
-        })
-        for connection in active_connections:
-            asyncio.create_task(connection.send_text(message))
+        topic_parts = msg.topic.split("/")
+        if len(topic_parts) == 2 and topic_parts[0] == "nav":
+            action = topic_parts[1]
+            payload = msg.payload.decode()
+
+            if "::" in payload:
+                uuid, event = payload.split("::", 1)
+            else:
+                uuid = payload
+                event = action
+
+            message_dict = {
+                "uuid": uuid,
+                "event": event
+            }
+
+            message_json = json.dumps(message_dict)
+
+            for connection in active_connections:
+                asyncio.create_task(connection.send_text(message_json))
+
     except Exception as e:
         print(f"Error forwarding message: {e}")
 
@@ -561,21 +576,26 @@ def get_led_status():
     return led_state
 
 
+import json
+
+navigation_state = {}
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     active_connections.append(websocket)
     try:
         while True:
-            msg = await websocket.receive_text()
-            print(f"Received message: {msg}")
-            for conn in active_connections:
-                if conn != websocket:
-                    await conn.send_text(msg)
-    except Exception as e:
-        print(f"WebSocket error: {e}")
-    finally:
+            message = await websocket.receive_text()
+            data = json.loads(message)
+
+            if "uuid" in data and "event" in data:
+                navigation_state[data["uuid"]] = data["event"]
+                for conn in active_connections:
+                    await conn.send_json(data)
+    except:
         active_connections.remove(websocket)
+
 
 
 async def broadcast_ws(data):
