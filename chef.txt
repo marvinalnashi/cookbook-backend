@@ -1,0 +1,126 @@
+import RPi.GPIO as GPIO
+import time
+import paho.mqtt.client as mqtt
+import board
+import busio
+from digitalio import DigitalInOut
+from adafruit_pn532.i2c import PN532_I2C
+from mpu6050 import mpu6050
+
+# MQTT Configuration
+MQTT_BROKER = "broker.hivemq.com"
+MQTT_TOPIC = "sensor/data"
+
+# MQTT Connection
+client = mqtt.Client()
+client.connect(MQTT_BROKER)
+
+GPIO.setmode(GPIO.BCM)
+
+# Setup Hall Sensors
+HALL_SENSOR_PIN1 = 5  # GPIO5
+HALL_SENSOR_PIN2 = 6
+HALL_SENSOR_PIN3 = 13
+HALL_SENSOR_PIN4 = 19
+HALL_SENSOR_PIN5 = 26
+
+GPIO.setup(HALL_SENSOR_PIN1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(HALL_SENSOR_PIN2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(HALL_SENSOR_PIN3, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(HALL_SENSOR_PIN4, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(HALL_SENSOR_PIN5, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
+def read_hall_sensors():
+    MQTT_TOPIC_HALL = MQTT_TOPIC + "/hall"
+    sensor_state1 = GPIO.input(HALL_SENSOR_PIN1)
+    sensor_state2 = GPIO.input(HALL_SENSOR_PIN2)
+    sensor_state3 = GPIO.input(HALL_SENSOR_PIN3)
+    sensor_state4 = GPIO.input(HALL_SENSOR_PIN4)
+    sensor_state5 = GPIO.input(HALL_SENSOR_PIN5)
+    if sensor_state1 == GPIO.LOW:
+        client.publish(MQTT_TOPIC_HALL, f"1")
+        return True
+    elif sensor_state2 == GPIO.LOW:
+        client.publish(MQTT_TOPIC_HALL, f"2")
+        return True
+    elif sensor_state3 == GPIO.LOW:
+        client.publish(MQTT_TOPIC_HALL, f"3")
+        return True
+    elif sensor_state4 == GPIO.LOW:
+        client.publish(MQTT_TOPIC_HALL, f"4")
+        return True
+    elif sensor_state5 == GPIO.LOW:
+        client.publish(MQTT_TOPIC_HALL, f"5")
+        return True
+    return False
+
+# RFID sensor setup
+i2c = busio.I2C(board.SCL, board.SDA)
+#reset_pin = DigitalInOut(board.D20)
+pn532 = PN532_I2C(i2c, debug=False) # if this errors, add reset=reset_pin and uncomment the above
+pn532.SAM_configuration()
+
+def read_rfid():
+    uid = pn532.read_passive_target(timeout=0.5)
+    if uid:
+        print('Found card with UID:', [hex(i) for i in uid])
+        client.publish(MQTT_TOPIC + "/rfid", f"{hex(uid[0])}")
+        return True
+    return False
+
+sensor = mpu6050(0x68)
+
+SMOOTHING_WINDOW = 5
+accel_x_values = []
+accel_y_values = []
+
+def read_motion():
+    THRESHOLD = 1.5
+    global accel_x_values, accel_y_values
+
+    accel_data = sensor.get_accel_data()
+    accel_x = accel_data['x']
+    accel_y = accel_data['y']
+
+    accel_x_values.append(accel_x)
+    accel_y_values.append(accel_y)
+
+    if len(accel_x_values) > SMOOTHING_WINDOW:
+        accel_x_values.pop(0)
+        accel_y_values.pop(0)
+
+    avg_accel_x = sum(accel_x_values) / len(accel_x_values)
+    avg_accel_y = sum(accel_y_values) / len(accel_y_values)
+
+    MQTT_TOPIC_MOTION = MQTT_TOPIC + "/motion"
+
+    if avg_accel_x > THRESHOLD:
+        client.publish(MQTT_TOPIC_MOTION, f"FORWARD")
+        return True
+    elif avg_accel_x < -THRESHOLD:
+        client.publish(MQTT_TOPIC_MOTION, f"BACKWARD")
+        return True
+    elif avg_accel_y > THRESHOLD:
+        client.publish(MQTT_TOPIC_MOTION, f"LEFT")
+        return True
+    elif avg_accel_y < -THRESHOLD:
+        client.publish(MQTT_TOPIC_MOTION, f"RIGHT")
+    return False
+
+# Main loop, hall sensors first then read_motion then rfid
+try:
+    while True:
+        if read_hall_sensors():
+            print("hall sensor detected")
+        elif read_motion():
+            print("motion detected")
+        elif read_rfid():
+            print("rfid detected")
+        time.sleep(1)
+
+except KeyboardInterrupt:
+    print("Stopping Sensor Handler...")
+    GPIO.cleanup()
+
+
+
