@@ -548,15 +548,21 @@ def get_led_status():
     return led_state
 
 
-@app.websocket("/ws/nav")
+@app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    websocket_connections.append(websocket)
+    active_connections.append(websocket)
     try:
         while True:
-            await websocket.receive_text()
-    except:
-        websocket_connections.remove(websocket)
+            msg = await websocket.receive_text()
+            print(f"Received message: {msg}")
+            for conn in active_connections:
+                if conn != websocket:
+                    await conn.send_text(msg)
+    except Exception as e:
+        print(f"WebSocket error: {e}")
+    finally:
+        active_connections.remove(websocket)
 
 
 async def broadcast_ws(data):
