@@ -51,6 +51,9 @@ def on_message(client, userdata, msg):
     print(f"MQTT: {msg.topic} = {msg.payload}")
     payload = msg.payload.decode()
     asyncio.run(broadcast_ws({"topic": msg.topic, "value": payload}))
+    logging.info(f"MQTT: {msg.topic} = {msg.payload}")
+    message = msg.topic
+    asyncio.create_task(broadcast_message(message))
 
 
 mqtt_client = mqtt.Client()
@@ -528,6 +531,12 @@ async def broadcast_led_state():
     """Send LED state update to all connected clients."""
     for connection in active_connections:
         await connection.send_json(led_state)
+
+
+async def broadcast_message(message: str):
+    """Send MQTT-triggered navigation events to all connected WebSocket clients."""
+    for connection in active_connections:
+        await connection.send_text(message)
 
 
 @app.post("/led/set-color")
