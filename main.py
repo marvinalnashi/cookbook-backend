@@ -41,45 +41,45 @@ app.add_middleware(
 )
 
 
-def on_connect(client, userdata, flags, rc):
-    print("Connected to HiveMQ with result code", rc)
-    for topic in ["nav/up", "nav/down", "nav/left", "nav/right", "nav/select"]:
-        client.subscribe(topic)
-
-
-def on_message(client, userdata, msg):
-    print(f"MQTT: {msg.topic} = {msg.payload}")
-    try:
-        message = json.dumps({
-            "topic": msg.topic,
-            "payload": msg.payload.decode()
-        })
-        for connection in active_connections:
-            asyncio.create_task(connection.send_text(message))
-    except Exception as e:
-        print(f"Error forwarding message: {e}")
-
-
-mqtt_client = mqtt.Client()
-mqtt_client.username_pw_set(
-    os.getenv("MQTT_USERNAME", "littlechef"),
-    os.getenv("MQTT_PASSWORD", "Cookbook123")
-)
-
-mqtt_client.tls_set(
-    ca_certs=certifi.where(),
-    certfile=None,
-    keyfile=None,
-    cert_reqs=ssl.CERT_REQUIRED,
-    tls_version=ssl.PROTOCOL_TLSv1_2
-)
-
-mqtt_client.on_connect = on_connect
-mqtt_client.on_message = on_message
-
-mqtt_client.connect("ef137b86ea2944f19a8b1bb71757d7bb.s1.eu.hivemq.cloud", 8883)
-
-mqtt_client.loop_start()
+# def on_connect(client, userdata, flags, rc):
+#     print("Connected to HiveMQ with result code", rc)
+#     for topic in ["nav/up", "nav/down", "nav/left", "nav/right", "nav/select"]:
+#         client.subscribe(topic)
+#
+#
+# def on_message(client, userdata, msg):
+#     print(f"MQTT: {msg.topic} = {msg.payload}")
+#     try:
+#         message = json.dumps({
+#             "topic": msg.topic,
+#             "payload": msg.payload.decode()
+#         })
+#         for connection in active_connections:
+#             asyncio.create_task(connection.send_text(message))
+#     except Exception as e:
+#         print(f"Error forwarding message: {e}")
+#
+#
+# mqtt_client = mqtt.Client()
+# mqtt_client.username_pw_set(
+#     os.getenv("MQTT_USERNAME", "littlechef"),
+#     os.getenv("MQTT_PASSWORD", "Cookbook123")
+# )
+#
+# mqtt_client.tls_set(
+#     ca_certs=certifi.where(),
+#     certfile=None,
+#     keyfile=None,
+#     cert_reqs=ssl.CERT_REQUIRED,
+#     tls_version=ssl.PROTOCOL_TLSv1_2
+# )
+#
+# mqtt_client.on_connect = on_connect
+# mqtt_client.on_message = on_message
+#
+# mqtt_client.connect("ef137b86ea2944f19a8b1bb71757d7bb.s1.eu.hivemq.cloud", 8883)
+#
+# mqtt_client.loop_start()
 
 
 def get_db_connection():
@@ -578,12 +578,46 @@ async def websocket_endpoint(websocket: WebSocket):
         active_connections.remove(websocket)
 
 
-async def broadcast_ws(data):
-    for ws in websocket_connections:
+nav_state = {"event": None}
+
+@app.on_event("startup")
+async def start_mqtt_listener():
+    import paho.mqtt.client as mqtt
+
+    def on_connect(client, userdata, flags, rc):
+        print("Connected to HiveMQ with result code " + str(rc))
+        client.subscribe("nav/#")
+
+    def on_message(client, userdata, msg):
+        print(f"MQTT: {msg.topic} = {msg.payload}")
+        event = msg.topic.split("/")[-1]
+        asyncio.create_task(broadcast_nav_event(event))
+
+    client = mqtt.Client()
+    client.username_pw_set("littlechef", "Cookbook123")
+    client.tls_set()
+    client.connect("ef137b86ea2944f19a8b1bb71757d7bb.s1.eu.hivemq.cloud", 8883)
+
+    client.on_connect = on_connect
+    client.on_message = on_message
+
+    client.loop_start()
+
+async def broadcast_nav_event(event):
+    nav_state["event"] = event
+    for connection in active_connections:
         try:
-            await ws.send_text(json.dumps(data))
+            await connection.send_json({"type": "nav", "event": event})
         except:
             pass
+
+
+# async def broadcast_ws(data):
+#     for ws in websocket_connections:
+#         try:
+#             await ws.send_text(json.dumps(data))
+#         except:
+#             pass
 
 
 @app.get("/recipes", include_in_schema=False)
