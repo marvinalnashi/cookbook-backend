@@ -60,27 +60,25 @@ def on_message(client, userdata, msg):
             payload = msg.payload.decode()
 
             if "::" in payload:
-                uuid, event = payload.split("::", 1)
-                message_dict = {
-                    "uuid": uuid,
-                    "event": event
-                }
+                uuid, value = payload.split("::", 1)
+                if action == "rfid":
+                    message_dict = {
+                        "uuid": uuid,
+                        "event": "rfid",
+                        "payload": {
+                            "ingredient": value
+                        }
+                    }
+                else:
+                    message_dict = {
+                        "uuid": uuid,
+                        "event": value
+                    }
             else:
                 uuid = payload
-                event = action
                 message_dict = {
                     "uuid": uuid,
-                    "event": event
-                }
-
-            if action == "rfid" and "::" in payload:
-                uuid, ingredient = payload.split("::", 1)
-                message_dict = {
-                    "uuid": uuid,
-                    "event": "rfid",
-                    "payload": {
-                        "ingredient": ingredient
-                    }
+                    "event": action
                 }
 
             message_json = json.dumps(message_dict)
