@@ -51,56 +51,45 @@ event_loop = asyncio.get_event_loop()
 
 
 def on_message(client, userdata, msg):
-    print(f"MQTT: {msg.topic} = {msg.payload}")
+    payload = msg.payload.decode()
+    print(f"MQTT: {msg.topic} = {payload}")
 
     try:
         topic_parts = msg.topic.split("/")
-        payload = msg.payload.decode()
-
-        if len(topic_parts) == 2 and topic_parts[0] == "nav":
+        if msg.topic.startswith("nav/"):
             action = topic_parts[1]
-
             if "::" in payload:
                 uuid, event = payload.split("::", 1)
             else:
                 uuid = payload
                 event = action
 
-            message_dict = {
-                "uuid": uuid,
-                "event": event
-            }
+            message = json.dumps({"uuid": uuid, "event": event})
 
         elif msg.topic == "sensor/data/rfid":
             if "::" in payload:
                 uuid, ingredient = payload.split("::", 1)
-                message_dict = {
-                    "uuid": uuid,
-                    "ingredient": ingredient
-                }
+                message = json.dumps({"uuid": uuid, "ingredient": ingredient})
             else:
-                print("Malformed RFID payload")
+                print(f"Invalid RFID message: {payload}")
                 return
-
         else:
-            print("Unhandled topic")
             return
 
-        message_json = json.dumps(message_dict)
-
         async def send_to_all():
-            for connection in active_connections:
+            for conn in active_connections:
                 try:
-                    await connection.send_text(message_json)
+                    await conn.send_text(message)
+                    print("WebSocket sent:", message)
                 except Exception as e:
-                    print(f"Failed to send WebSocket message: {e}")
-                    if connection in active_connections:
-                        active_connections.remove(connection)
+                    print("WebSocket error:", e)
+                    if conn in active_connections:
+                        active_connections.remove(conn)
 
         asyncio.run_coroutine_threadsafe(send_to_all(), event_loop)
 
     except Exception as e:
-        print(f"Error forwarding message: {e}")
+        print("Error processing message:", e)
 
 mqtt_client = mqtt.Client()
 mqtt_client.username_pw_set(
