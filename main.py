@@ -55,44 +55,49 @@ def on_message(client, userdata, msg):
 
     try:
         topic_parts = msg.topic.split("/")
+        payload = msg.payload.decode()
+
         if len(topic_parts) == 2 and topic_parts[0] == "nav":
             action = topic_parts[1]
-            payload = msg.payload.decode()
 
             if "::" in payload:
-                uuid, value = payload.split("::", 1)
-                if action == "rfid":
-                    message_dict = {
-                        "uuid": uuid,
-                        "event": "rfid",
-                        "payload": {
-                            "ingredient": value
-                        }
-                    }
-                else:
-                    message_dict = {
-                        "uuid": uuid,
-                        "event": value
-                    }
+                uuid, event = payload.split("::", 1)
             else:
                 uuid = payload
+                event = action
+
+            message_dict = {
+                "uuid": uuid,
+                "event": event
+            }
+
+        elif msg.topic == "sensor/data/rfid":
+            if "::" in payload:
+                uuid, ingredient = payload.split("::", 1)
                 message_dict = {
                     "uuid": uuid,
-                    "event": action
+                    "ingredient": ingredient
                 }
+            else:
+                print("Malformed RFID payload")
+                return
 
-            message_json = json.dumps(message_dict)
+        else:
+            print("Unhandled topic")
+            return
 
-            async def send_to_all():
-                for connection in active_connections:
-                    try:
-                        await connection.send_text(message_json)
-                    except Exception as e:
-                        print(f"Failed to send WebSocket message: {e}")
-                        if connection in active_connections:
-                            active_connections.remove(connection)
+        message_json = json.dumps(message_dict)
 
-            asyncio.run_coroutine_threadsafe(send_to_all(), event_loop)
+        async def send_to_all():
+            for connection in active_connections:
+                try:
+                    await connection.send_text(message_json)
+                except Exception as e:
+                    print(f"Failed to send WebSocket message: {e}")
+                    if connection in active_connections:
+                        active_connections.remove(connection)
+
+        asyncio.run_coroutine_threadsafe(send_to_all(), event_loop)
 
     except Exception as e:
         print(f"Error forwarding message: {e}")
