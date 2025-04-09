@@ -55,20 +55,25 @@ def on_message(client, userdata, msg):
 
     try:
         topic_parts = msg.topic.split("/")
-        if len(topic_parts) == 2 and topic_parts[0] == "nav":
-            action = topic_parts[1]
+        if len(topic_parts) == 2:
+            category, action = topic_parts
             payload = msg.payload.decode()
 
-            if "::" in payload:
-                uuid, event = payload.split("::", 1)
-            else:
-                uuid = payload
-                event = action
+            uuid = "rpi"
 
-            message_dict = {
-                "uuid": uuid,
-                "event": event
-            }
+            message_dict = {"uuid": uuid, "event": None}
+
+            if category == "nav":
+                if "::" in payload:
+                    uuid, action = payload.split("::", 1)
+                message_dict["event"] = action
+
+            elif category == "sensor" and action == "rfid":
+                message_dict["event"] = "rfid"
+                message_dict["payload"] = {"ingredient": payload}
+
+            else:
+                return
 
             message_json = json.dumps(message_dict)
 
@@ -85,6 +90,7 @@ def on_message(client, userdata, msg):
 
     except Exception as e:
         print(f"Error forwarding message: {e}")
+
 
 
 mqtt_client = mqtt.Client()
