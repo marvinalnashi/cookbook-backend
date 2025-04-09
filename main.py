@@ -43,7 +43,7 @@ app.add_middleware(
 
 def on_connect(client, userdata, flags, rc):
     print("Connected to HiveMQ with result code", rc)
-    for topic in ["nav/up", "nav/down", "nav/left", "nav/right", "nav/home"]:
+    for topic in ["nav/up", "nav/down", "nav/left", "nav/right", "nav/home", "sensor/data/rfid"]:
         client.subscribe(topic)
 
 
