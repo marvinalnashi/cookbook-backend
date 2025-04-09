@@ -55,43 +55,61 @@ def on_message(client, userdata, msg):
 
     try:
         topic_parts = msg.topic.split("/")
-        if len(topic_parts) == 2:
-            category, action = topic_parts
-            payload = msg.payload.decode()
-
-            uuid = "rpi"
-
-            message_dict = {"uuid": uuid, "event": None}
-
-            if category == "nav":
-                if "::" in payload:
-                    uuid, action = payload.split("::", 1)
-                message_dict["event"] = action
-
-            elif category == "sensor" and action == "rfid":
-                message_dict["event"] = "rfid"
-                message_dict["payload"] = {"ingredient": payload}
-
+        payload = msg.payload.decode()
+        if len(topic_parts) == 2 and topic_parts[0] == "nav":
+            action = topic_parts[1]
+            if "::" in payload:
+                uuid, event = payload.split("::", 1)
             else:
+                uuid = payload
+                event = action
+
+            message_dict = {
+                "uuid": uuid,
+                "event": event
+            }
+
+        elif msg.topic == "sensor/data/rfid":
+            RFID_INGREDIENTS = {
+                "fc30399e": "Tomato",
+                "4cbe459e": "Cheese",
+                "4cd7f99c": "Onion",
+                "dc55019d": "Milk",
+                "dc42029d": "Eggs"
+            }
+
+            uid_hex = payload.replace("0x", "").replace(",", "").replace(" ", "").lower()
+            ingredient = RFID_INGREDIENTS.get(uid_hex)
+
+            if ingredient:
+                message_dict = {
+                    "uuid": "rpi",
+                    "event": "rfid",
+                    "payload": {
+                        "ingredient": ingredient
+                    }
+                }
+            else:
+                print(f"Unknown RFID UID: {uid_hex}")
                 return
+        else:
+            return
 
-            message_json = json.dumps(message_dict)
+        message_json = json.dumps(message_dict)
 
-            async def send_to_all():
-                for connection in active_connections:
-                    try:
-                        await connection.send_text(message_json)
-                    except Exception as e:
-                        print(f"Failed to send WebSocket message: {e}")
-                        if connection in active_connections:
-                            active_connections.remove(connection)
+        async def send_to_all():
+            for connection in active_connections:
+                try:
+                    await connection.send_text(message_json)
+                except Exception as e:
+                    print(f"Failed to send WebSocket message: {e}")
+                    if connection in active_connections:
+                        active_connections.remove(connection)
 
-            asyncio.run_coroutine_threadsafe(send_to_all(), event_loop)
+        asyncio.run_coroutine_threadsafe(send_to_all(), event_loop)
 
     except Exception as e:
         print(f"Error forwarding message: {e}")
-
-
 
 mqtt_client = mqtt.Client()
 mqtt_client.username_pw_set(
